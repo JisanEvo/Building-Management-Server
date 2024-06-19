@@ -6,8 +6,15 @@ require('dotenv').config();
 const port = process.env.PORT || 5000;
 
 // middle wear
-app.use(cors());
-app.use(express.json());
+const corsOptions = {
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    credentials: true,
+    optionSuccessStatus: 200,
+  }
+  app.use(cors(corsOptions))
+
+  app.use(express.json())
+//   app.use(cookieParser())
 
 console.log(process.env.DB_USER)
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -31,7 +38,7 @@ async function run() {
         const result=await apartCollection.find().toArray();
         res.send(result)
       })
-
+// get single room
       app.get('/room/:id', async(req,res)=>{
         const id=req.params.id;
         const query={_id: new ObjectId(id)}
