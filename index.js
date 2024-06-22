@@ -35,6 +35,8 @@ async function run() {
         await client.connect();
         const apartCollection = client.db("heavenDB").collection("apartment")
         const userCollection = client.db("heavenDB").collection("users")
+        const cartCollection = client.db("heavenDB").collection("cart")
+        const announceCollection = client.db("heavenDB").collection("announce")
         // auth related api
         // app.post('/jwt', async (req, res) => {
         //     const user = req.body
@@ -95,23 +97,23 @@ async function run() {
             const result = await userCollection.updateOne(query, updateDoc, options)
             res.send(result)
         })
-            // get user  info from db
-            app.get('/user/:email', async(req,res)=>{
-                const email =req.params.email
-                const result=await userCollection.findOne({email})
-                res.send(result)
-            })
-    //    update a user role
-    app.patch('/users/update/:email', async(req,res)=>{
-        const email=req.params.email
-        const user=req.body
-        const query={email}
-        const updateDoc={
-            $set:{...user,timestamp: Date.now()}
-        }
-        const result=await userCollection.updateOne(query,updateDoc)
-        res.send(result)
-    })
+        // get user  info from db
+        app.get('/user/:email', async (req, res) => {
+            const email = req.params.email
+            const result = await userCollection.findOne({ email })
+            res.send(result)
+        })
+        //    update a user role
+        app.patch('/users/update/:email', async (req, res) => {
+            const email = req.params.email
+            const user = req.body
+            const query = { email }
+            const updateDoc = {
+                $set: { ...user, timestamp: Date.now() }
+            }
+            const result = await userCollection.updateOne(query, updateDoc)
+            res.send(result)
+        })
 
         // get all users data from db
         app.get('/users', async (req, res) => {
@@ -132,6 +134,33 @@ async function run() {
             const result = await apartCollection.findOne(query)
             res.send(result)
         })
+        //    add to the cart in db
+        app.post('/carts', async (req, res) => {
+            const cartItem = req.body;
+            const result = await cartCollection.insertOne(cartItem)
+            res.send(result);
+        })
+        // get single user cart details
+        app.get('/carts', async (req, res) => {
+            const email=req.query.email;
+            const query={email:email};
+            const result = await cartCollection.find(query).toArray()
+            res.send(result)
+        })
+
+        // make announce
+        app.post('/announce', async (req, res) => {
+            const announceItem = req.body;
+            // console.log(announceItem)
+            const result = await announceCollection.insertOne(announceItem)
+            res.send(result);
+        })
+// get announcement in backend
+app.get('/announce', async (req, res) => {
+    const result = await announceCollection.find().toArray()
+    res.send(result)
+})
+
 
 
 
