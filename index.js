@@ -2,7 +2,8 @@ const express = require('express');
 const app = express();
 const cors = require('cors');
 require('dotenv').config();
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
+// console.log(process.env.STRIPE_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middle wear
@@ -37,36 +38,18 @@ async function run() {
         const userCollection = client.db("heavenDB").collection("users")
         const cartCollection = client.db("heavenDB").collection("cart")
         const announceCollection = client.db("heavenDB").collection("announce")
-        // auth related api
-        // app.post('/jwt', async (req, res) => {
-        //     const user = req.body
-        //     const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        //         expiresIn: '365d',
-        //     })
-        //     res
-        //         .cookie('token', token, {
-        //             httpOnly: true,
-        //             secure: process.env.NODE_ENV === 'production',
-        //             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-        //         })
-        //         .send({ success: true })
-        // })
-        // // Logout
-        // app.get('/logout', async (req, res) => {
-        //     try {
-        //         res
-        //             .clearCookie('token', {
-        //                 maxAge: 0,
-        //                 secure: process.env.NODE_ENV === 'production',
-        //                 sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-        //             })
-        //             .send({ success: true })
-        //         console.log('Logout successful')
-        //     } catch (err) {
-        //         res.status(500).send(err)
-        //     }
-        // })
-        //   save user data in server
+        const PaymentCollection = client.db("heavenDB").collection("payment")
+
+        const verifyAdmin = async (req, res, next) => {
+            const user = req.user
+            const query = { email: user?.email }
+            const result = await userCollection.findOne(query)
+            if (!result || result?.role !== 'admin') return res.status(401).send({ message: 'Forbidden Access' })
+            next()
+        }
+
+
+
         // save a user data in db
         app.put('/user', async (req, res) => {
             const user = req.body
@@ -95,6 +78,38 @@ async function run() {
                 },
             }
             const result = await userCollection.updateOne(query, updateDoc, options)
+            res.send(result)
+        })
+
+        // create-payment-intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const price = req.body.price;
+            console.log(price)
+             const priceInCent=parseFloat(price)*100;
+            //  console.log(priceInCent)
+           if(!price||priceInCent<1) return
+             const {client_secret} = await stripe.paymentIntents.create({
+                amount: priceInCent,
+                currency: "usd",
+                // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+                automatic_payment_methods: {
+                    enabled: true,
+                },
+            })
+            // send client secret
+            res.send({clientSecret:client_secret})
+        })
+        // save payment in db
+        app.post('/saving', async (req, res) => {
+            const paymentItem = req.body;
+            const result = await PaymentCollection.insertOne(paymentItem)
+            res.send(result);
+        })
+
+        //
+        app.get('/saving/:email', async (req, res) => {
+            const email = req.params.email
+            const result = await PaymentCollection.findOne({ email })
             res.send(result)
         })
         // get user  info from db
@@ -142,8 +157,8 @@ async function run() {
         })
         // get single user cart details
         app.get('/carts', async (req, res) => {
-            const email=req.query.email;
-            const query={email:email};
+            const email = req.query.email;
+            const query = { email: email };
             const result = await cartCollection.find(query).toArray()
             res.send(result)
         })
@@ -155,11 +170,11 @@ async function run() {
             const result = await announceCollection.insertOne(announceItem)
             res.send(result);
         })
-// get announcement in backend
-app.get('/announce', async (req, res) => {
-    const result = await announceCollection.find().toArray()
-    res.send(result)
-})
+        // get announcement in backend
+        app.get('/announce', async (req, res) => {
+            const result = await announceCollection.find().toArray()
+            res.send(result)
+        })
 
 
 
