@@ -1,4 +1,6 @@
 const express = require('express');
+const cookieParser = require('cookie-parser');
+
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId, Timestamp } = require('mongodb');
 
@@ -6,18 +8,18 @@ const cors = require('cors');
 require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 // console.log(process.env.STRIPE_SECRET_KEY)
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 4000;
 
 // middle wear
 const corsOptions = {
-    origin: ['https://heaven-259e7.web.app'],
+    origin: ['http://localhost:5173','https://heaven-259e7.web.app'],
     credentials: true,
     optionSuccessStatus: 200,
 }
 app.use(cors(corsOptions))
 
 app.use(express.json())
-//   app.use(cookieParser())
+  app.use(cookieParser())
 
 // console.log(process.env.DB_USER)
 const uri = `mongodb+srv://${process.env.DB_SUER}:${process.env.DB_PASS}@cluster0.qrw2ki7.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -103,8 +105,13 @@ async function run() {
         })
         // save payment in db
         app.post('/saving', async (req, res) => {
+            const user = req.user
+            const userEmail=user.email
+
             const paymentItem = req.body;
-            const result = await PaymentCollection.insertOne(paymentItem)
+            paymentItem.userEmail = userEmail;
+
+            const result = await PaymentCollection.insertOne(paymentItem);
             res.send(result);
         })
 
@@ -141,7 +148,7 @@ async function run() {
 
 
         app.get('/apartment', async (req, res) => {
-            const result = await apartCollection.find().toArray();
+            const result = await apartCollection.find({}).toArray();
             res.send(result)
         })
         // get single room
@@ -151,6 +158,7 @@ async function run() {
             const result = await apartCollection.findOne(query)
             res.send(result)
         })
+
         //    add to the cart in db
         app.post('/carts', async (req, res) => {
             const cartItem = req.body;
@@ -182,7 +190,7 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        // await client.db("admin").command({ ping: 1 });
+        await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
